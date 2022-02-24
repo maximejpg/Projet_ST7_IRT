@@ -111,12 +111,12 @@ for j in range(n):
     if x_sol[j] == 0:
         print("\nFacility " + str(j+1) + " is closed")
     else :
-        print("\nFacility " + str(j+1) + " supplies : (" + str(100*round(sum(distr[:,j])/Facilities[j].capacity,2)) + "% stock used)")
+        print("\nFacility " + str(j+1) + " supplies : (" + str(100*round(sum(distr[:,j])/Facilities[j].capacity,3)) + "% stock used)")
         for i in [i for i in range(m) if y_sol[i,j] > 0.0]:
-            print("   - Client " + str(i+1) + " at a rate of " + str(100*round(y_sol[i,j], 2)) + "%")
+            print("   - Client " + str(i+1) + " at a rate of " + str(100*round(y_sol[i,j], 3)) + "%")
 print("\n"
-      + str(100*round(sum(sum(distr))/sum([Facilities[j].capacity for j in range(n)]), 2))
+      + str(100*round(sum(sum(distr))/sum([Facilities[j].capacity for j in range(n)]), 3))
       + "% capacity used\n"
-      + str(100*round(sum(sum(distr))/sum([Clients[i].demand for i in range(m)]), 2))
+      + str(100*round(sum(sum(distr))/sum([Clients[i].demand for i in range(m)]), 3))
       + "% delivery rate"
       + "\nTotal profit: " + str(round(-flp.solution.get_objective_value(),2)))
