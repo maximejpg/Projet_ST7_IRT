@@ -26,12 +26,11 @@ Clients = (Client("1", 2, 200),
            Client("2", 5, 150),
            Client("3", 3, 175))
 m = len(Clients)
-D = sum(c.demand for c in Clients)
 
 # Unitary transport cost between Client i and Facility j, t_{i,j}
-t = [[20, 30, 50, 35, 60],
-     [10, 60, 45, 55, 25],
-     [45, 30, 55, 80, 20]]
+t = [[20, 30, 50, 35],
+     [10, 60, 45, 55],
+     [45, 30, 55, 80]]
 t = np.array(t)
 
 # Total unitary transport gain between Client i and Facility j, q_{i,j}
@@ -81,13 +80,22 @@ def facility_location_problem(Facilities, Clients, q, eq = False) :
         flp.linear_constraints.add(lin_expr = [[y[i],[1.0]*n] for i in range(m)],
                                     senses = ["E"]*m,                               
                                     rhs = [1.0]*m)
-        
+                
     # No supply can come from a closed facility
     for i in range(m):
         for j in range(n):
             flp.linear_constraints.add(lin_expr = [cplex.SparsePair(ind = [y[i][j], x[j]], val = [1.0, -1.0])],
                                        senses = ["L"],
                                        rhs = [0.0])
+    
+    ### ADD a constraint to control the minimum global delivery rate
+    
+    # tol = 0.8
+    # flp.linear_constraints.add(lin_expr = [[[sum(y[i][j] for j in range(n)) for i in range(m)], [c.demand for c in Clients]]], 
+    #                            senses = ["G"],
+    #                            rhs = [tol*sum(c.demand for c in Clients)])
+    
+    
     
     ## Solve the model
     
@@ -99,11 +107,12 @@ def facility_location_problem(Facilities, Clients, q, eq = False) :
 # Get and print results
 #-----------------------------------------------------------------------------
 
-flp = facility_location_problem(Facilities, Clients, q, eq = True)
+flp = facility_location_problem(Facilities, Clients, q)
     
 x_sol = flp.solution.get_values()[:n]
 y_sol = np.array([flp.solution.get_values()[n+(i*n):n+(i+1)*n] for i in range(m)])
 distr = np.array([y_sol[i]*Clients[i].demand for i in range(m)])
+
 
 # print(distr)
 
