@@ -1,6 +1,7 @@
 import numpy as np
 import cplex
 from collections import namedtuple
+import random
 
 
 #-----------------------------------------------------------------------------
@@ -12,26 +13,25 @@ from collections import namedtuple
 Facility = namedtuple('Facility', ('num',         # Facility number, j
                                    'capacity',    # Supply of the facility, S_{j}
                                    'cost'))       # Facility opening cost, c_{j}
-Facilities = (Facility("1", 3, 480),
-              Facility("2", 1, 200),
-              Facility("3", 2, 320),
-              Facility("4", 4, 340),)
-n = len(Facilities)
+n = random.randint(10,20)
+Facilities = ()
+for i in range(n):
+    Facilities += (Facility(str(i),random.randint(4,8), random.randint(10,50) ),)
+
 
 # List of clients
 Client = namedtuple('Client', ('num',           # Client number, i
                                'demand',        # Demand of the client, d_{i}
                                'gain'))         # Unitary gain to satistfy the demand, r_{i}
-Clients = (Client("1", 2, 200),
-           Client("2", 5, 150),
-           Client("3", 3, 175))
-m = len(Clients)
+m = random.randint(10,20)
+Clients = ()
+for i in range(m):
+    Clients += (Client(str(i),random.randint(1,5), random.randint(10,50) ),)
+
 
 # Unitary transport cost between Client i and Facility j, t_{i,j}
-t = [[20, 30, 50, 35],
-     [10, 60, 45, 55],
-     [45, 30, 55, 80]]
-t = np.array(t)
+t = np.random.randint(low = 15, high = 80, size = (m,n))
+
 
 # Total unitary transport gain between Client i and Facility j, q_{i,j}
 q = [[(Clients[i].gain-t[i,j])*Clients[i].demand for j in range(n)] for i in range(m)]
@@ -114,13 +114,13 @@ y_sol = np.array([flp.solution.get_values()[n+(i*n):n+(i+1)*n] for i in range(m)
 distr = np.array([y_sol[i]*Clients[i].demand for i in range(m)])
 
 
-# print(distr)
+print(distr)
 
 for j in range(n):
     if x_sol[j] == 0:
-        print("\nFacility " + str(j+1) + " is closed")
+        print("Facility " + str(j+1) + " is closed")
     else :
-        print("\nFacility " + str(j+1) + " supplies : (" + str(100*round(sum(distr[:,j])/Facilities[j].capacity,3)) + "% stock used)")
+        print("Facility " + str(j+1) + " supplies : (" + str(100*round(sum(distr[:,j])/Facilities[j].capacity,3)) + "% stock used)")
         for i in [i for i in range(m) if y_sol[i,j] > 0.0]:
             print("   - Client " + str(i+1) + " at a rate of " + str(100*round(y_sol[i,j], 3)) + "%")
 print("\n"
