@@ -13,7 +13,7 @@ import random
 Server = namedtuple('Server', ('num',         # Facility number, j
                                'capacity',    # Computing capacity of the server (in terms of CPU cores), S_{j}
                                'cost'))       # Unitary cost per cpu, c_{j}
-n = random.randint(5,5)
+n = random.randint(5,15)
 Servers = ()
 for i in range(n):
     Servers += (Server(str(i),random.randint(4,8), random.randint(10,50) ),)
@@ -23,17 +23,21 @@ for i in range(n):
 Client = namedtuple('Client', ('num',           # Client number, i
                                'demand',        # Need of computing power of a part of the algorithm (in terms of CPU cores), d_{i}
                                'gain'))         
-m = random.randint(1,1)
+m = random.randint(2,5)
 Clients = ()
 for i in range(m):
-    Clients += (Client(str(i),random.randint(1,1), random.randint(0,0)),)
+    Clients += (Client(str(i),random.randint(5,30), random.randint(0,0)),)
 
 
 
 
 # Total unitary transport gain between Client i and Facility j, q_{i,j}
-q = [[1/((Servers[j].cost)*Clients[i].demand) for j in range(n)] for i in range(m)]
+q = [[-((Servers[j].cost)*Clients[i].demand) for j in range(n)] for i in range(m)]
 q = np.array(q).astype("float")
+
+
+#Génréation de la liste des tolérances des clients
+tol=[random.random() for i in range(m)]
 
 
 #En résumé, on a négligé tout les phénomènes de transport, et on a changé le problème en répondant à la question, comment faire tourner l'algorithme en allumant le moins de serveurs possibles. Les seuls coûts sont ceux de l'allumage des serveurs et du traitement des données par le serveur. Le serveur est capable de traiter tant de données, le client représente un volume de données à traiter 
@@ -42,7 +46,7 @@ q = np.array(q).astype("float")
 # Build the model
 #-----------------------------------------------------------------------------
 
-def facility_location_problem(Facilities, Clients, q, eq = False) :
+def facility_location_problem(Facilities, Clients, q, tol, eq = False) :
 
     ## Create CPO model
     flp = cplex.Cplex()
@@ -65,10 +69,16 @@ def facility_location_problem(Facilities, Clients, q, eq = False) :
     ## Create the constraints
     
     # Facility j cannot supply more than S_{j} : 
-    flp.linear_constraints.add(lin_expr = [[[y[i][j] for i in range(m)],[c.demand for c in Clients]] for j in range(n)],
+    flp.linear_constraints.add(lin_expr = [[[y[i][j] for i in range(m)]+[x[j]],[c.demand for c in Clients]+[-Facilities[j].capacity]] for j in range(n)],
                                senses = ["L"]*n,
-                               rhs = [f.capacity for f in Facilities]
+                               rhs = [0.0]*n
                                )
+    
+# Facility j cannot supply more than S_{j} : 
+#    flp.linear_constraints.add(lin_expr = [[[y[i][j] for i in range(m)],[c.demand for c in Clients]] for j in range(n)],
+#                               senses = ["L"]*n,
+#                               rhs = [f.capacity for f in Facilities]
+#                               )
         
     # Demands are fullfiled
     if eq == False :
@@ -82,11 +92,18 @@ def facility_location_problem(Facilities, Clients, q, eq = False) :
                                     rhs = [1.0]*m)
                 
     # No supply can come from a closed facility
-    for i in range(m):
-        for j in range(n):
-            flp.linear_constraints.add(lin_expr = [cplex.SparsePair(ind = [y[i][j], x[j]], val = [1.0, -1.0])],
-                                       senses = ["L"],
-                                       rhs = [0.0])
+#    for i in range(m):
+ #       for j in range(n):
+  #          flp.linear_constraints.add(lin_expr = [cplex.SparsePair(ind = [y[i][j], x[j]], val = [1.0, -1.0])],
+   #                                    senses = ["L"],
+    #                                   rhs = [0.0])
+ 
+    
+    
+    flp.linear_constraints.add(lin_expr = [[[y[i][j] for j in range(n)], [1.0]*n] for i in range(m)], 
+                               senses = ["G"]*m,
+                               rhs = tol)    
+    
     
     ## Solve the model
     
@@ -97,9 +114,11 @@ def facility_location_problem(Facilities, Clients, q, eq = False) :
 #-----------------------------------------------------------------------------
 # Get and print results
 #-----------------------------------------------------------------------------
+if sum(Clients[i].demand for i in range(m)) <= sum(Servers[j].capacity for j in range(n)):
+    flp = facility_location_problem(Servers, Clients, q, tol,True)
+else :
+    flp = facility_location_problem(Servers, Clients, q, tol,)
 
-flp = facility_location_problem(Servers, Clients, q)
-    
 x_sol = flp.solution.get_values()[:n]
 y_sol = np.array([flp.solution.get_values()[n+(i*n):n+(i+1)*n] for i in range(m)])
 distr = np.array([y_sol[i]*Clients[i].demand for i in range(m)])
@@ -121,7 +140,5 @@ print("\n"
       + "% computing capacity used\n"
       + str(100*round(sum(sum(distr))/sum([Clients[i].demand for i in range(m)]), 3))
       + "% data treated"
-      + "\nTotal cost : " + str(round(-flp.solution.get_objective_value(),2)))
+      + "\nTotal cost : " + str(round(flp.solution.get_objective_value(),2)))
 
-print(Servers)
-print(Clients)
