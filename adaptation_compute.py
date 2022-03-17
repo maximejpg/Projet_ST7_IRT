@@ -11,9 +11,9 @@ import random
 
 # List of servers                                   
 Server = namedtuple('Server', ('num',         # Facility number, j
-                               'capacity',    # Computing capacity of the server, S_{j}
-                               'cost'))       # Server starting cost, c_{j}
-n = random.randint(10,20)
+                               'capacity',    # Computing capacity of the server (in terms of CPU cores), S_{j}
+                               'cost'))       # Unitary cost per cpu, c_{j}
+n = random.randint(5,5)
 Servers = ()
 for i in range(n):
     Servers += (Server(str(i),random.randint(4,8), random.randint(10,50) ),)
@@ -21,18 +21,18 @@ for i in range(n):
 
 # List of clients
 Client = namedtuple('Client', ('num',           # Client number, i
-                               'demand',        # Need of computing power of a part of the algorithm, d_{i}
-                               'gain'))         # Unitary consumption to compute the data, r_{i}
-m = random.randint(10,20)
+                               'demand',        # Need of computing power of a part of the algorithm (in terms of CPU cores), d_{i}
+                               'gain'))         
+m = random.randint(1,1)
 Clients = ()
 for i in range(m):
-    Clients += (Client(str(i),random.randint(1,5), random.randint(10,50) ),)
+    Clients += (Client(str(i),random.randint(1,1), random.randint(0,0)),)
 
 
 
 
 # Total unitary transport gain between Client i and Facility j, q_{i,j}
-q = [[(Clients[i].gain)*Clients[i].demand for j in range(n)] for i in range(m)]
+q = [[1/((Servers[j].cost)*Clients[i].demand) for j in range(n)] for i in range(m)]
 q = np.array(q).astype("float")
 
 
@@ -109,11 +109,13 @@ print(distr)
 
 for j in range(n):
     if x_sol[j] == 0:
-        print("Server " + str(j+1) + " is shutdown")
+        a=1
+   #     print("Server " + str(j+1) + " is shutdown")
     else :
-        print("Server " + str(j+1) + " uses " + str(100*round(sum(distr[:,j])/Servers[j].capacity,3)) + "% of its computing capacity and it uses its computing capacity to treat data of")
+        print("Server " + str(j) + " uses " + str(100*round(sum(distr[:,j])/Servers[j].capacity,3)) + "% of computing capacity")
         for i in [i for i in range(m) if y_sol[i,j] > 0.0]:
-            print("   - Client " + str(i+1) + " which has " + str(100*round(y_sol[i,j], 3)) + "% of its data treated by this server")
+            a=2
+            #print("   - Client " + str(i+1) + " which has " + str(100*round(y_sol[i,j], 3)) + "% of its data treated by this server")
 print("\n"
       + str(100*round(sum(sum(distr))/sum([Servers[j].capacity for j in range(n)]), 3))
       + "% computing capacity used\n"
@@ -121,3 +123,5 @@ print("\n"
       + "% data treated"
       + "\nTotal cost : " + str(round(-flp.solution.get_objective_value(),2)))
 
+print(Servers)
+print(Clients)

@@ -13,7 +13,7 @@ import random
 Facility = namedtuple('Facility', ('num',         # Facility number, j
                                    'capacity',    # Supply of the facility, S_{j}
                                    'cost'))       # Facility opening cost, c_{j}
-n = random.randint(10,20)
+n = random.randint(5,5)
 Facilities = ()
 for i in range(n):
     Facilities += (Facility(str(i),random.randint(4,8), random.randint(10,50) ),)
@@ -23,7 +23,7 @@ for i in range(n):
 Client = namedtuple('Client', ('num',           # Client number, i
                                'demand',        # Demand of the client, d_{i}
                                'gain'))         # Unitary gain to satistfy the demand, r_{i}
-m = random.randint(10,20)
+m = random.randint(1,1)
 Clients = ()
 for i in range(m):
     Clients += (Client(str(i),random.randint(1,5), random.randint(10,50) ),)
@@ -129,3 +129,6 @@ print("\n"
       + str(100*round(sum(sum(distr))/sum([Clients[i].demand for i in range(m)]), 3))
       + "% delivery rate"
       + "\nTotal profit: " + str(round(-flp.solution.get_objective_value(),2)))
+print(Facilities)
+print(Clients)
+print(t)
