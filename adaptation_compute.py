@@ -77,7 +77,7 @@ def facility_location_problem(Servers, Clients, q) :
         
     # Demands are fullfiled : if all demands can be fullfilled, they are, and if not then we insure that client's demand are satisfied with a certain tolerance
     
-    if sum(Clients[i].demand for i in range(m)) <= sum(Servers[j].capacity for j in range(n)): : 
+    if sum(Clients[i].demand for i in range(m)) <= sum(Servers[j].capacity for j in range(n)): 
         flp.linear_constraints.add(lin_expr = [[y[i],[1.0]*n] for i in range(m)],
                                     senses = ["E"]*m,                               
                                     rhs = [1.0]*m)
