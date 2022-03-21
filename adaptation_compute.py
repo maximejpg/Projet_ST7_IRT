@@ -22,22 +22,19 @@ for i in range(n):
 # List of clients
 Client = namedtuple('Client', ('num',           # Client number, i
                                'demand',        # Need of computing power of a part of the algorithm (in terms of CPU cores), d_{i}
-                               'gain'))         
+                               'gain',
+                               'tol'))          # Minimum delivery rate desired each client, alpha_{i}
 m = random.randint(2,5)
 Clients = ()
 for i in range(m):
-    Clients += (Client(str(i),random.randint(5,30), random.randint(0,0)),)
-
-
+    Clients += (Client(str(i),random.randint(5,30), random.randint(0,0), random.random()),)
 
 
 # Total unitary transport gain between Client i and Facility j, q_{i,j}
-q = [[-((Servers[j].cost)*Clients[i].demand) for j in range(n)] for i in range(m)]
+q = [[-Servers[j].cost*Clients[i].demand for j in range(n)] for i in range(m)]
 q = np.array(q).astype("float")
 
 
-# Randomly generates clients tolerance (minimum delivery rate)
-tol=[random.random() for i in range(m)]
 
 
 #En résumé, on a négligé tout les phénomènes de transport, et on a changé le problème en répondant à la question, comment faire tourner l'algorithme en allumant le moins de serveurs possibles. Les seuls coûts sont ceux de l'allumage des serveurs et du traitement des données par le serveur. Le serveur est capable de traiter tant de données, le client représente un volume de données à traiter 
@@ -46,7 +43,7 @@ tol=[random.random() for i in range(m)]
 # Build the model
 #-----------------------------------------------------------------------------
 
-def facility_location_problem(Facilities, Clients, q, tol) :
+def facility_location_problem(Servers, Clients, q) :
 
     ## Create CPO model
     flp = cplex.Cplex()
@@ -54,22 +51,25 @@ def facility_location_problem(Facilities, Clients, q, tol) :
     
     ## Create the decisions variables
     
-    # Whether or not facility j must be opened, x_{j}
-    x = list(flp.variables.add(obj = [f.cost for f in Facilities],
+    # Whether or not server j must be used, x_{j}
+    x = list(flp.variables.add(obj = [Servers[j].cost for j in range(n)],
                                lb = [0]*n,
                                ub = [1]*n,
                                types = ["B"]*n))
     
+    # Rate of client's i demand fullfilled by server j, y_{i,j}
     y = [[] for i in range(m)]
     for i in range(m):
         y[i] = list(flp.variables.add(obj = -q[i],
                                       lb = [0]*n,
                                       ub = [1]*n))
     
+    
     ## Create the constraints
     
-    # Facility j cannot supply more than S_{j} and no supply can come from a closed facility : 
-    flp.linear_constraints.add(lin_expr = [[[y[i][j] for i in range(m)]+[x[j]],[c.demand for c in Clients]+[-Facilities[j].capacity]] for j in range(n)],
+    # Facility j cannot supply more than x_{j}*S_{j}: 
+        
+    flp.linear_constraints.add(lin_expr = [[[y[i][j] for i in range(m)]+[x[j]],[Clients[i].demand for i in range(m)]+[-Servers[j].capacity]] for j in range(n)],
                                senses = ["L"]*n,
                                rhs = [0.0]*n
                                )
@@ -88,7 +88,7 @@ def facility_location_problem(Facilities, Clients, q, tol) :
                                 rhs = [1.0]*m)
         flp.linear_constraints.add(lin_expr = [[y[i], [1.0]*n] for i in range(m)], 
                                senses = ["G"]*m,
-                               rhs = tol)  
+                               rhs = [Clients[i].tol for i in range(m)])  
         
     ## Solve the model
     
@@ -100,10 +100,10 @@ def facility_location_problem(Facilities, Clients, q, tol) :
 # Get and print results
 #-----------------------------------------------------------------------------
 
-flp = facility_location_problem(Servers, Clients, q, tol)
+flp = facility_location_problem(Servers, Clients, q)
 
 x_sol = flp.solution.get_values()[:n]
-y_sol = np.array([flp.solution.get_values()[n+(i*n):n+(i+1)*n] for i in range(m)])
+y_sol = np.array([flp.solution.get_values()[(i+1)*n:(i+2)*n] for i in range(m)])
 distr = np.array([y_sol[i]*Clients[i].demand for i in range(m)])
 
 
@@ -124,4 +124,3 @@ print("\n"
       + str(100*round(sum(sum(distr))/sum([Clients[i].demand for i in range(m)]), 3))
       + "% data treated"
       + "\nTotal cost : " + str(round(flp.solution.get_objective_value(),2)))
-
