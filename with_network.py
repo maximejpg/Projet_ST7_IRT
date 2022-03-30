@@ -14,8 +14,8 @@ from scipy.sparse.csgraph import shortest_path
 # List of servers                                   
 Server = namedtuple('Server', ('num',         # Facility number, j
                                'capacity',    # Computing capacity of the server (in terms of CPU cores), S_{j}
-                               'cost'))       # Unitary cost per cpu, c_{j}
-n = random.randint(4,4)
+                               'cost'))       # Unitary time to compute, c_{j}
+n = random.randint(3,3)
 Servers = ()
 for i in range(n):
     Servers += (Server(str(i),random.randint(4,8), random.randint(10,50) ),)
@@ -32,8 +32,6 @@ for j in range(n):
 
 dist_matrix = shortest_path(csgraph=net, directed = False)
     
-print(net)
-print(dist_matrix)
 
 
 # List of clients
@@ -41,15 +39,13 @@ Client = namedtuple('Client', ('num',           # On which node are the data ini
                                'demand',        # Need of computing power of a part of the algorithm (in terms of CPU cores), d_{i}
                                'gain',
                                'tol'))          # Minimum delivery rate desired each client, alpha_{i}
-m = random.randint(1,1)
+m = random.randint(2,2)
 Clients = ()
 for i in range(m):
-    Clients += (Client(str(random.randint(1,n)),random.randint(5,30), random.randint(0,0), random.random()),)
-
-print(Clients)
+    Clients += (Client(str(random.randint(1,n)),random.randint(5,10), random.randint(0,0), random.random()),)
 
 # Total unitary transport gain between Client i and Facility j, q_{i,j}
-q = [[Servers[j].cost*Clients[i].demand for j in range(n)] for i in range(m)]
+q = [[(Servers[j].cost+dist_matrix[int(Clients[i].num)-1][j])*Clients[i].demand for j in range(n)] for i in range(m)]
 q = np.array(q).astype("float")
 
 
@@ -79,7 +75,7 @@ def facility_location_problem(Servers, Clients, q) :
     # Rate of client's i demand fullfilled by server j, y_{i,j}
     y = [[] for i in range(m)]
     for i in range(m):
-        y[i] = list(flp.variables.add(obj = -q[i],
+        y[i] = list(flp.variables.add(obj = q[i],
                                       lb = [0]*n,
                                       ub = [1]*n))
     
@@ -130,15 +126,21 @@ distr = np.array([y_sol[i]*Clients[i].demand for i in range(m)])
 
 print(distr)
 
+print(net)
+print(dist_matrix)
+print(Clients)
+print([Servers[j].cost for j in range(n)])
+print([Servers[j].capacity for j in range(n)])
+
 for j in range(n):
     if x_sol[j] == 0:
         a=1
    #     print("Server " + str(j+1) + " is shutdown")
     else :
-        print("Server " + str(j) + " uses " + str(100*round(sum(distr[:,j])/Servers[j].capacity,3)) + "% of computing capacity")
+        print("Server " + str(j+1) + " uses " + str(100*round(sum(distr[:,j])/Servers[j].capacity,3)) + "% of computing capacity")
         for i in [i for i in range(m) if y_sol[i,j] > 0.0]:
             a=2
-            #print("   - Client " + str(i+1) + " which has " + str(100*round(y_sol[i,j], 3)) + "% of its data treated by this server")
+            print("   - Client " + str(i+1) + " which has " + str(100*round(y_sol[i,j], 3)) + "% of its data treated by this server")
 print("\n"
       + str(100*round(sum(sum(distr))/sum([Servers[j].capacity for j in range(n)]), 3))
       + "% computing capacity used\n"
