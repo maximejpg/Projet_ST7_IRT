@@ -3,6 +3,7 @@ import cplex
 from collections import namedtuple
 import random
 from scipy.sparse.csgraph import shortest_path
+import time
 
 
 #-----------------------------------------------------------------------------
@@ -15,14 +16,14 @@ from scipy.sparse.csgraph import shortest_path
 Server = namedtuple('Server', ('num',         # Facility number, j
                                'capacity',    # Computing capacity of the server (in terms of CPU cores), S_{j}
                                'cost'))       # Unitary time to compute, c_{j}
-n = random.randint(3,3)
+n = random.randint(100,100)
 Servers = ()
 for i in range(n):
     Servers += (Server(str(i),random.randint(4,8), random.randint(10,50) ),)
     
 
 # Generates the network
-th = 0.1
+th = 0.2
 net = np.zeros(shape = (n,n))
 for j in range(n):
     for jj in range(j+1,n):
@@ -39,10 +40,13 @@ Client = namedtuple('Client', ('num',           # On which node are the data ini
                                'demand',        # Need of computing power of a part of the algorithm (in terms of CPU cores), d_{i}
                                'gain',
                                'tol'))          # Minimum delivery rate desired each client, alpha_{i}
-m = random.randint(2,2)
+m = random.randint(30,30)
+
+if m > n :
+    print("More clients")
 Clients = ()
 for i in range(m):
-    Clients += (Client(str(random.randint(1,n)),random.randint(5,10), random.randint(0,0), random.random()),)
+    Clients += (Client(str(random.randint(1,n)),random.randint(10,15), random.randint(0,0), random.random()),)
 
 # Total unitary transport gain between Client i and Facility j, q_{i,j}
 q = [[(Servers[j].cost+dist_matrix[int(Clients[i].num)-1][j])*Clients[i].demand for j in range(n)] for i in range(m)]
@@ -115,8 +119,11 @@ def facility_location_problem(Servers, Clients, q) :
 # Get and print results
 #-----------------------------------------------------------------------------
 
-
+start = time.time()
 flp = facility_location_problem(Servers, Clients, q)
+end = time.time()
+
+print("runtime:", end-start)
 
 
 x_sol = flp.solution.get_values()[:n]
@@ -140,7 +147,7 @@ for j in range(n):
         print("Server " + str(j+1) + " uses " + str(100*round(sum(distr[:,j])/Servers[j].capacity,3)) + "% of computing capacity")
         for i in [i for i in range(m) if y_sol[i,j] > 0.0]:
             a=2
-            print("   - Client " + str(i+1) + " which has " + str(100*round(y_sol[i,j], 3)) + "% of its data treated by this server")
+            # print("   - Client " + str(i+1) + " which has " + str(100*round(y_sol[i,j], 3)) + "% of its data treated by this server")
 print("\n"
       + str(100*round(sum(sum(distr))/sum([Servers[j].capacity for j in range(n)]), 3))
       + "% computing capacity used\n"
